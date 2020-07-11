@@ -74,7 +74,7 @@ function isSumEqual(string $input) : bool
         throw new InvalidArgumentException();
     }
     //Will accumulate the diff
-    $result;
+    $result = 0;
     //I don't know, could be more readable but looks more optimized )
     for ($i = 0; $i < 3; $i++){
         $result += (int) $input[$i] - (int) $input[$i + 3];

@@ -7,8 +7,13 @@
  * @param  string  $input
  * @return string
  */
-function snakeCaseToCamelCase(string $input)
+function snakeCaseToCamelCase(string $input) : string
 {
+    $pattern = '/(_)(.)/';
+    $result = preg_replace_callback($pattern, function(array $matches) {
+        return strtoupper($matches[2]);
+    }, $input);
+    return $result;
 }
 
 /**
@@ -19,8 +24,30 @@ function snakeCaseToCamelCase(string $input)
  * @param  string  $input
  * @return string
  */
-function mirrorMultibyteString(string $input)
+function mirrorMultibyteString(string $input) : string
 {
+    //should be param in function
+    $encodingBytesLengh = 2;
+    
+    $pattern = '/[а-яА-Я]+/u';
+    preg_match_all($pattern, $input, $result);
+    //Devide words to array consists of mb letters
+    foreach ($result[0] as $index => $word) {
+        //wanted to use mb_str_split -> but it not available in 7.3 
+        $result[$index] = str_split($word, $encodingBytesLengh);
+    }
+    //Reverse letters
+    foreach ($result as $index => $splitedWord) {
+        $result[$index] = array_reverse($splitedWord);
+    }
+    //Build the words back
+    foreach ($result as $index => $splitedWord) {
+        $result[$index] = implode($result[$index]);
+    }
+    //Build the sentence
+    $result = implode(' ', $result);
+
+    return $result;
 }
 
 /**
