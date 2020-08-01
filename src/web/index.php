@@ -23,6 +23,40 @@ $airports = require './airports.php';
  * and apply pagination logic
  * (see Pagination task below)
  */
+const PAGE_ITEMS_COUNT = 5;
+// PAGE_PAGINATION_COUNT should be unpaired number
+const PAGE_PAGINATION_COUNT = 5;
+const PAGE_PAGINATION_OFFSET = (PAGE_PAGINATION_COUNT - 1) / 2;
+
+$page = $_GET['page'];
+
+//check if 'page' is a number, to avoid unexpected behavior of script
+if (!is_numeric($page)) {
+    http_response_code(404);
+    echo "<b>ERROR 404</b>";
+    exit();
+} else {
+    $page = (int) $page;
+}
+
+$pagesCount = (int) ceil(count($airports) / PAGE_ITEMS_COUNT);
+
+if ($page > 0) {
+    $airports = array_slice($airports, ($page - 1) * PAGE_ITEMS_COUNT, PAGE_ITEMS_COUNT);
+}
+
+//decrease number of pagination items to PAGE_PAGINATION_COUNT
+if ($page <= PAGE_PAGINATION_OFFSET) {
+    $paginationStart = 1; 
+    $paginationEnd = PAGE_PAGINATION_COUNT;
+} elseif ($page >= $pagesCount - PAGE_PAGINATION_OFFSET) {
+    $paginationStart = $pagesCount - PAGE_PAGINATION_COUNT; 
+    $paginationEnd = $pagesCount;
+} else {
+    $paginationStart = $page - PAGE_PAGINATION_OFFSET; 
+    $paginationEnd = $page + PAGE_PAGINATION_OFFSET;
+}
+
 ?>
 <!doctype html>
 <html lang="en">
@@ -115,9 +149,30 @@ $airports = require './airports.php';
     -->
     <nav aria-label="Navigation">
         <ul class="pagination justify-content-center">
-            <li class="page-item active"><a class="page-link" href="#">1</a></li>
-            <li class="page-item"><a class="page-link" href="#">2</a></li>
-            <li class="page-item"><a class="page-link" href="#">3</a></li>
+            <li class="page-item <?= ($page === 1) ? ' disabled' : '' ?>"><a class="page-link" href="/index.php?page=1">First</a></li>
+            <li class="page-item <?= ($page === 1) ? ' disabled' : '' ?>">
+                <a class="page-link" href="/index.php?page=<?= ($page === 1) ? $page : $page - 1 ?>" aria-label="Previous">
+                    <span aria-hidden="true">&laquo;</span>
+                    <span class="sr-only">Previous</span>
+                </a>
+            </li>
+            <?php for($i = $paginationStart; $i <= $paginationEnd; $i++):  ?>
+            <li class="page-item <?= ($i === $page) ? ' active' : '' ?>">
+                <a 
+                    class="page-link" 
+                    href="/index.php?page=<?= $i ?>"
+                >
+                <?= $i ?>
+                </a>
+            </li>
+            <?php endfor; ?>
+            <li class="page-item <?= ($page === $pagesCount) ? ' disabled' : '' ?>">
+                <a class="page-link" href="/index.php?page=<?= ($page === $pagesCount) ? $page : $page + 1 ?>" aria-label="Next">
+                    <span aria-hidden="true">&raquo;</span>
+                    <span class="sr-only">Next</span>
+                </a>
+            </li>
+            <li class="page-item <?= ($page === $pagesCount) ? ' disabled' : '' ?>"><a class="page-link" href="/index.php?page=<?= $pagesCount ?>">Last</a></li>
         </ul>
     </nav>
 
