@@ -3,20 +3,52 @@ require_once './functions.php';
 
 $airports = require './airports.php';
 
+session_start();
+
 // Filtering
 /**
  * Here you need to check $_GET request if it has any filtering
  * and apply filtering by First Airport Name Letter and/or Airport State
  * (see Filtering tasks 1 and 2 below)
  */
+if (isset($_GET['filter_by_first_letter'])) {
+    $_SESSION['filter_by_first_letter'] = $_GET['filter_by_first_letter'];
+}
 
+if (isset($_GET['filter_by_state'])) {
+    $_SESSION['filter_by_state'] = $_GET['filter_by_state'];
+}
+
+if (isset($_GET['filter_reset']) && $_GET['filter_reset'] === '1') {
+    unset($_SESSION['filter_by_state']); 
+    unset($_SESSION['filter_by_first_letter']);
+    unset($_SESSION['sort']);
+}
+
+if (isset($_SESSION['filter_by_first_letter'])) {
+    $airports = array_filter($airports, function($airport) {
+        return mb_substr($airport['name'], 0, 1) === $_SESSION['filter_by_first_letter']; 
+    });
+}
+
+if (isset($_SESSION['filter_by_state'])) {
+    $airports = array_filter($airports, function($airport) {
+        return $airport['state'] === $_SESSION['filter_by_state'];
+    });
+}
 // Sorting
 /**
  * Here you need to check $_GET request if it has sorting key
  * and apply sorting
  * (see Sorting task below)
  */
+if (isset($_GET['sort'])) {
+    $_SESSION['sort'] = $_GET['sort'];
+}
 
+if (isset($_SESSION['sort'])) {
+    $airports = array_sort($airports, $_SESSION['sort']);
+}
 // Pagination
 /**
  * Here you need to check $_GET request if it has pagination key
@@ -28,15 +60,11 @@ const PAGE_ITEMS_COUNT = 5;
 const PAGE_PAGINATION_COUNT = 5;
 const PAGE_PAGINATION_OFFSET = (PAGE_PAGINATION_COUNT - 1) / 2;
 
-$page = $_GET['page'];
-
 //check if 'page' is a number, to avoid unexpected behavior of script
-if (!is_numeric($page)) {
-    http_response_code(404);
-    echo "<b>ERROR 404</b>";
-    exit();
+if ( !isset($_GET['page']) || !is_numeric($_GET['page'])) {
+    $page = 1;
 } else {
-    $page = (int) $page;
+    $page = (int) $_GET['page'];
 }
 
 $pagesCount = (int) ceil(count($airports) / PAGE_ITEMS_COUNT);
@@ -46,7 +74,10 @@ if ($page > 0) {
 }
 
 //decrease number of pagination items to PAGE_PAGINATION_COUNT
-if ($page <= PAGE_PAGINATION_OFFSET) {
+if ($pagesCount < PAGE_PAGINATION_COUNT) {
+    $paginationStart = 1;
+    $paginationEnd = $pagesCount;
+} elseif ($page <= PAGE_PAGINATION_OFFSET) {
     $paginationStart = 1; 
     $paginationEnd = PAGE_PAGINATION_COUNT;
 } elseif ($page >= $pagesCount - PAGE_PAGINATION_OFFSET) {
@@ -87,10 +118,10 @@ if ($page <= PAGE_PAGINATION_OFFSET) {
         Filter by first letter:
 
         <?php foreach (getUniqueFirstLetters(require './airports.php') as $letter): ?>
-            <a href="#"><?= $letter ?></a>
+            <a href="<?= addParametersToUrl('/index.php?page=1', ['filter_by_first_letter' => $letter]) ?>"><?= $letter ?></a>
         <?php endforeach; ?>
 
-        <a href="/" class="float-right">Reset all filters</a>
+        <a href="/index.php?filter_reset=1" class="float-right">Reset all filters</a>
     </div>
 
     <!--
@@ -106,10 +137,10 @@ if ($page <= PAGE_PAGINATION_OFFSET) {
     <table class="table">
         <thead>
         <tr>
-            <th scope="col"><a href="#">Name</a></th>
-            <th scope="col"><a href="#">Code</a></th>
-            <th scope="col"><a href="#">State</a></th>
-            <th scope="col"><a href="#">City</a></th>
+            <th scope="col"><a href="<?= addParametersToUrl('/index.php?page=' .  $page, ['sort' => 'name']) ?>">Name</a></th>
+            <th scope="col"><a href="<?= addParametersToUrl('/index.php?page=' .  $page, ['sort' => 'code']) ?>">Code</a></th>
+            <th scope="col"><a href="<?= addParametersToUrl('/index.php?page=' .  $page, ['sort' => 'state']) ?>">State</a></th>
+            <th scope="col"><a href="<?= addParametersToUrl('/index.php?page=' .  $page, ['sort' => 'city']) ?>">City</a></th>
             <th scope="col">Address</th>
             <th scope="col">Timezone</th>
         </tr>
@@ -129,7 +160,7 @@ if ($page <= PAGE_PAGINATION_OFFSET) {
         <tr>
             <td><?= $airport['name'] ?></td>
             <td><?= $airport['code'] ?></td>
-            <td><a href="#"><?= $airport['state'] ?></a></td>
+            <td><a href="<?= addParametersToUrl('/index.php?page=1', ['filter_by_state' => $airport['state']]) ?>"><?= $airport['state'] ?></a></td>
             <td><?= $airport['city'] ?></td>
             <td><?= $airport['address'] ?></td>
             <td><?= $airport['timezone'] ?></td>
@@ -149,9 +180,9 @@ if ($page <= PAGE_PAGINATION_OFFSET) {
     -->
     <nav aria-label="Navigation">
         <ul class="pagination justify-content-center">
-            <li class="page-item <?= ($page === 1) ? ' disabled' : '' ?>"><a class="page-link" href="/index.php?page=1">First</a></li>
+            <li class="page-item <?= ($page === 1) ? ' disabled' : '' ?>"><a class="page-link" href="<?= addParametersToUrl('/index.php?page=1') ?>">First</a></li>
             <li class="page-item <?= ($page === 1) ? ' disabled' : '' ?>">
-                <a class="page-link" href="/index.php?page=<?= ($page === 1) ? $page : $page - 1 ?>" aria-label="Previous">
+                <a class="page-link" href="<?= addParametersToUrl('/index.php?page=' . (($page === 1) ? $page : $page - 1)) ?>" aria-label="Previous">
                     <span aria-hidden="true">&laquo;</span>
                     <span class="sr-only">Previous</span>
                 </a>
@@ -159,20 +190,20 @@ if ($page <= PAGE_PAGINATION_OFFSET) {
             <?php for($i = $paginationStart; $i <= $paginationEnd; $i++):  ?>
             <li class="page-item <?= ($i === $page) ? ' active' : '' ?>">
                 <a 
-                    class="page-link" 
-                    href="/index.php?page=<?= $i ?>"
+                    class="page-link"
+                    href="<?= addParametersToUrl('/index.php?page=' . $i) ?>"
                 >
                 <?= $i ?>
                 </a>
             </li>
             <?php endfor; ?>
             <li class="page-item <?= ($page === $pagesCount) ? ' disabled' : '' ?>">
-                <a class="page-link" href="/index.php?page=<?= ($page === $pagesCount) ? $page : $page + 1 ?>" aria-label="Next">
+                <a class="page-link" href="<?= addParametersToUrl('/index.php?page=' . (($page === $pagesCount) ? $page : $page + 1)) ?>" aria-label="Next">
                     <span aria-hidden="true">&raquo;</span>
                     <span class="sr-only">Next</span>
                 </a>
             </li>
-            <li class="page-item <?= ($page === $pagesCount) ? ' disabled' : '' ?>"><a class="page-link" href="/index.php?page=<?= $pagesCount ?>">Last</a></li>
+            <li class="page-item <?= ($page === $pagesCount) ? ' disabled' : '' ?>"><a class="page-link" href="<?= addParametersToUrl('/index.php?page=' . $pagesCount) ?>">Last</a></li>
         </ul>
     </nav>
 
